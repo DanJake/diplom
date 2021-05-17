@@ -1,67 +1,100 @@
 from PIL import Image
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
+from scipy.interpolate import interp1d
 
-t55 = [(140, 106, 0), (162, 88, 3),  (102, 144, 0), (145, 99, 5), (129, 118, 3), (121, 130, 3), (135, 111, 1), (116, 134, 0), (114, 134, 1), (97, 149, 2), (128, 117, 2)   ]
-# 121, 130, 3
-im = Image.open('./Pictures/etalon1.jpg')
-temperature_list= {'69': [(249, 248, 10), (249, 248, 8), (248, 229, 2)],
-              '67': [(247, 228, 1) ],
-              '66': [(247, 173, 0) ],
-              '65': [(248, 172, 1), (247, 159, 0), (249, 171, 1), (248, 158, 0), (247, 116, 0), ], #last
-              '64': [(247, 109, 0), (247, 113, 0), (246, 120, 0), (247, 121, 0), (248, 119, 0),(248, 122, 1), ],
-              '63': [(247, 104, 0), (246, 93, 0), (247, 89, 0), (249, 108, 2), (246, 110, 0), (248, 110, 1), (247, 101, 0), (246, 105, 0)],
-              '62': [(248, 42, 2), (245, 66, 0), (249, 42, 2), (246, 62, 0), (247, 65, 0), (248, 43, 0), (248, 41, 1)],
-              '61': [(247, 44, 1), (248, 58, 0), (248, 55, 0), (248, 59, 1),(246, 60, 0), (247, 61, 0), (245, 59, 0) ]
-              '60': [(244, 5, 0), (239, 8, 0), (241, 7, 0), (247, 11, 0), (243, 6, 0), (242, 5, 0), (247, 4, 0)],
-              '59': [(246, 4, 0), (237, 9, 0), (244, 2, 0), (243, 4, 0), (242, 2, 1),(240, 6, 0),  ],
-              '55': [(0, 0, 0), (0, 0, 0)],
-              '50': [(0, 0, 0), (0, 0, 0)],
-              '46': [(31, 1, 197), (32, 0, 195)],
-              '44': [(47, 0, 174), (0, 0, 0)],
-              '42': [(54, 0, 156), (67, 0, 142)],
-              '40': [(64, 1, 144), (67, 0, 144), (65, 0, 142), (68, 0, 139), (67, 0, 139),
-                     (68, 0, 137), (64, 0, 146), (63, 1, 146), (65, 1, 141), (64, 1, 142) ]}
-#245, 59 ,0
-temperature_count= {'40': 0,
-              '45': 0,
-              '50': 0,
-              '55': 0,
-              '60': 0,
-              '65': 0,
-              '70': 0,
-              '75': 0,
-              '80': 0,
-              '85': 0,
-              '90': 0,
-              '95': 0}
-red = 0
-black = 0
-orange = 0
-range1 = (0, 174, 76)
-range2 = (0, 169, 76)
+class Temperature:
+
+    def __init__(self,
+                 temperature,
+                 minRange,
+                 maxRange):
+        self.temperature = temperature
+        self.minRange = minRange
+        self.maxRange = maxRange
+        self.pixelCount = 0
+
+    def append_pixel(self):
+        self.pixelCount += 1
+
+def control_table():
+    control_list = []
+    control_list.append(Temperature(40, (70, 0, 80), (85, 5, 120)))
+    control_list.append(Temperature(42, (40, 0, 120), (85, 5, 185)))
+    control_list.append(Temperature(44, (0, 0, 185), (40, 5, 240)))
+    control_list.append(Temperature(46, (0, 0, 200), (8, 50, 220)))
+    control_list.append(Temperature(48, (0, 20, 125), (8, 132, 235)))
+    control_list.append(Temperature(50, (0, 105, 80), (5, 165, 130)))
+    control_list.append(Temperature(52, (0, 200, 0), (36, 240, 35)))
+    control_list.append(Temperature(54, (36, 120, 0), (120, 225, 5)))
+    control_list.append(Temperature(56, (120, 60, 0), (180, 120, 5)))
+    control_list.append(Temperature(58, (180, 0, 0), (255, 70, 5)))
+    control_list.append(Temperature(60, (230, 0, 0), (255, 20, 5)))
+    control_list.append(Temperature(62, (235, 40, 0), (250, 100, 5)))
+    control_list.append(Temperature(64, (235, 100, 0), (252, 160, 5)))
+    control_list.append(Temperature(66, (235, 160, 0), (250, 220, 5)))
+    control_list.append(Temperature(68, (235, 210, 0), (250, 235, 50)))
+    control_list.append(Temperature(70, (240, 240, 50), (255, 255, 240)))
+    return control_list
+def sort_pixels(image):
+    control_list = control_table()
+
+    tmpDict = {}
+    for i in control_list:
+        tmpDict[i.temperature] = 0
+
+    for pixel in image.getdata():
+        for i in control_list:
+            if i.minRange[0] < pixel[0] < i.maxRange[0] and i.minRange[1] < pixel[1] < i.maxRange[1] and i.minRange[2] < pixel[2] < i.maxRange[2]:
+                i.append_pixel()
+                tmpDict[i.temperature] += 1
+
+    return tmpDict
+
+def draf_graphic(list_1, list_2=[] ):
+    x = np.linspace(40, 70, num=16, endpoint=True)
+    y = []
+    xnew = np.linspace(40, 70, num=150, endpoint=True)
+
+    for i in list_1:
+        y.append(list_1[i])
+
+    f = interp1d(x, y, kind='cubic')
+    ax = plt.subplot()
+    if list_2:
+        y_second = []
+        for i in list_2:
+            y_second.append(list_2[i])
+        f2 = interp1d(x, y_second, kind='cubic')
+        ax.plot(xnew, f(xnew), '-', xnew, f2(xnew), '--')
+
+    else:
+        ax.plot(xnew, f(xnew), '-')
+
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(2))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
+    ax.grid(which='major', color='k')
+    ax.minorticks_on()
+    ax.grid(which='minor', color='gray', linestyle=':')
+    plt.legend(['Etalon', 'Second'], loc='best')
+    plt.show()
+
+def main():
+    im = Image.open('./Pictures/etalon1.jpg')
+    im1 = Image.open('./Pictures/example.jpg')
+    im2 = Image.open('./Pictures/IRT041_.DTV')
+    sort_pixels(im)
+    list = sort_pixels(im)
+    list1 = sort_pixels(im1)
+
+    print(list)
+    print(list1)
+    draf_graphic(list)
 
 
-for pixel in im.getdata():
-    if pixel == range1 or range2:
-        red += 1
+if __name__ == "__main__":
+    main()
 
 
 
-print('black=' + str(temperature_count['55'])+', red='+str(red)+', orange='+str(orange))
-pixel_jpg = list(im.getdata())
-f = open('text.txt', 'w')
-for index in pixel_jpg:
-    f.write(str(index) + '\n')
-
-x = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95]
-y = []
-for i in temperature_count:
-    y.append(temperature_count[i]*1000)
-print(y)
-
-
-plt.figure(figsize=(12, 7))
-plt.plot(x, y, label="etalon", lw=5, mec='b', )
-plt.legend()
-plt.grid(True)
-#plt.show()
