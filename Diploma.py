@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 from scipy.interpolate import interp1d
+import cv2
+
 
 class Temperature:
 
@@ -13,10 +15,7 @@ class Temperature:
         self.temperature = temperature
         self.minRange = minRange
         self.maxRange = maxRange
-        self.pixelCount = 0
 
-    def append_pixel(self):
-        self.pixelCount += 1
 
 def control_table():
     control_list = []
@@ -37,30 +36,33 @@ def control_table():
     control_list.append(Temperature(68, (235, 210, 0), (250, 235, 50)))
     control_list.append(Temperature(70, (240, 240, 50), (255, 255, 240)))
     return control_list
+
+
 def sort_pixels(image):
     control_list = control_table()
 
-    tmpDict = {}
+    pixels_dictionary = {}
     for i in control_list:
-        tmpDict[i.temperature] = 0
+        pixels_dictionary[i.temperature] = 0
 
     for pixel in image.getdata():
         for i in control_list:
             if i.minRange[0] < pixel[0] < i.maxRange[0] and i.minRange[1] < pixel[1] < i.maxRange[1] and i.minRange[2] < pixel[2] < i.maxRange[2]:
-                i.append_pixel()
-                tmpDict[i.temperature] += 1
+                pixels_dictionary[i.temperature] += 1
 
-    return tmpDict
+    return pixels_dictionary
 
-def draf_graphic(list_1, list_2=[] ):
+
+def draft_graphic(list_1, list_2=[]):
+
     x = np.linspace(40, 70, num=16, endpoint=True)
-    y = []
+    y_first = []
     xnew = np.linspace(40, 70, num=150, endpoint=True)
 
     for i in list_1:
-        y.append(list_1[i])
+        y_first.append(list_1[i])
 
-    f = interp1d(x, y, kind='cubic')
+    f = interp1d(x, y_first, kind='cubic')
     ax = plt.subplot()
     if list_2:
         y_second = []
@@ -68,7 +70,6 @@ def draf_graphic(list_1, list_2=[] ):
             y_second.append(list_2[i])
         f2 = interp1d(x, y_second, kind='cubic')
         ax.plot(xnew, f(xnew), '-', xnew, f2(xnew), '--')
-
     else:
         ax.plot(xnew, f(xnew), '-')
 
@@ -77,20 +78,53 @@ def draf_graphic(list_1, list_2=[] ):
     ax.grid(which='major', color='k')
     ax.minorticks_on()
     ax.grid(which='minor', color='gray', linestyle=':')
-    plt.legend(['Etalon', 'Second'], loc='best')
+    plt.legend(['First picture', 'Second picture'], loc='best')
     plt.show()
+
+
+def count_coef(list_1, list_2):
+    coef = []
+    countCoef = 0
+    sumCoef = 0
+    for i in list_1:
+        coef.append(list_2[i]/list_1[i])
+        countCoef += 1
+        sumCoef += list_2[i]/list_1[i]
+
+    print(sumCoef/countCoef + 0.1)
+    return sumCoef/countCoef + 0.1
+
+
+def other_method(some_image):
+    image = cv2.imread(some_image)
+
+    flags = [i for i in dir(cv2) if i.startswith('COLOR_')]
+    light_orange = (1, 190, 200)
+    dark_orange = (18, 255, 255)
+
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    mask = cv2.inRange(hsv_image, light_orange, dark_orange)
+    result = cv2.bitwise_and(image, image, mask=mask)
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(mask, cmap="gray")
+    plt.subplot(1, 2, 2)
+    plt.imshow(result)
+    plt.show()
+
 
 def main():
     im = Image.open('./Pictures/etalon1.jpg')
     im1 = Image.open('./Pictures/example.jpg')
-    im2 = Image.open('./Pictures/IRT041_.DTV')
-    sort_pixels(im)
+
     list = sort_pixels(im)
     list1 = sort_pixels(im1)
 
     print(list)
     print(list1)
-    draf_graphic(list)
+    count_coef(list, list1)
+    #draft_graphic(list)
+    #other_method('./Pictures/etalon1.jpg')
 
 
 if __name__ == "__main__":
