@@ -114,8 +114,10 @@ def other_method(some_image):
 
 
 def main():
-    im = Image.open('./Pictures/etalon1.jpg')
-    im1 = Image.open('./Pictures/example.jpg')
+    image = './Pictures/etalon1.jpg'
+    image1 = './Pictures/example.jpg'
+    im = Image.open(image)
+    im1 = Image.open(image1)
 
     list = sort_pixels(im)
     list1 = sort_pixels(im1)
@@ -124,7 +126,7 @@ def main():
     print(list1)
     count_coef(list, list1)
     #draft_graphic(list)
-    #other_method('./Pictures/etalon1.jpg')
+    other_method(image)
 
 
 if __name__ == "__main__":
